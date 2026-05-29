@@ -6,20 +6,27 @@ const path = require('path');
 
 /**
  * Spawns the Python rename engine in stdin/stdout mode.
+ * @param {string} pythonPath
+ * @param {string} scriptPath
+ * @param {string} csvArg
+ * @param {string} sqlText
  * @returns {Promise<{stdout: string, stderr: string}>}
  */
 function runPythonEngine(pythonPath, scriptPath, csvArg, sqlText) {
     return new Promise((resolve, reject) => {
         const proc = spawn(pythonPath, [scriptPath, csvArg], { env: process.env });
 
+        /** @type {Buffer[]} */
         const stdoutChunks = [];
+        /** @type {Buffer[]} */
         const stderrChunks = [];
 
         proc.stdout.on('data', chunk => stdoutChunks.push(chunk));
         proc.stderr.on('data', chunk => stderrChunks.push(chunk));
 
         proc.on('error', err => {
-            if (err.code === 'ENOENT') {
+            const nodeErr = /** @type {NodeJS.ErrnoException} */ (err);
+            if (nodeErr.code === 'ENOENT') {
                 reject(new Error(
                     `Python executable not found: "${pythonPath}". ` +
                     `Install Python 3 or set sqlrename.pythonPath in VS Code settings.`
@@ -46,6 +53,27 @@ function runPythonEngine(pythonPath, scriptPath, csvArg, sqlText) {
         proc.stdin.write(sqlText, 'utf8');
         proc.stdin.end();
     });
+}
+
+/**
+ * Resolves the mapping CSV setting to an absolute path.
+ *   - Empty/unset  → bundled CSV inside the extension
+ *   - Absolute     → used as-is
+ *   - Relative     → resolved against the first workspace folder;
+ *                    falls back to bundled CSV if no folder is open
+ * @param {string | undefined} setting
+ * @param {string} extensionPath
+ * @returns {string}
+ */
+function resolveCsvPath(setting, extensionPath) {
+    const bundled = path.join(extensionPath, 'rename_engine', 'name_conversion.csv');
+    if (!setting) return bundled;
+    if (path.isAbsolute(setting)) return setting;
+    const folders = vscode.workspace.workspaceFolders;
+    if (folders && folders.length > 0) {
+        return path.join(folders[0].uri.fsPath, setting);
+    }
+    return bundled;
 }
 
 /**
@@ -86,7 +114,7 @@ function activate(context) {
 
             const config = vscode.workspace.getConfiguration('sqlrename');
             const pythonPath = config.get('pythonPath') || 'python3';
-            const csvArg = config.get('mappingCsvPath') || 'name_conversion.csv';
+            const csvArg = resolveCsvPath(config.get('mappingCsvPath'), context.extensionPath);
             const scriptPath = path.join(
                 context.extensionPath,
                 'rename_engine',
@@ -101,11 +129,16 @@ function activate(context) {
                         title: 'SQL Rename: rewriting…',
                         cancellable: false,
                     },
-                    () => runPythonEngine(pythonPath, scriptPath, csvArg, sqlText)
+                    () => runPythonEngine(
+                        /** @type {string} */ (pythonPath),
+                        scriptPath,
+                        csvArg,
+                        sqlText
+                    )
                 );
             } catch (err) {
                 outputChannel.appendLine('--- ERROR ---');
-                outputChannel.appendLine(err.message);
+                outputChannel.appendLine(err instanceof Error ? err.message : String(err));
                 outputChannel.show(true);
                 vscode.window.showErrorMessage('SQL Rename failed. See "SQL Rename" output channel.');
                 return;

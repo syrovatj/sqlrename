@@ -40,8 +40,13 @@
         },
         "sqlrename.mappingCsvPath": {
           "type": "string",
-          "default": "name_conversion.csv",
-          "description": "Mapping CSV filename (resolved relative to rename_engine/) or absolute path to a custom CSV."
+          "default": "",
+          "description": "Path to the name mapping CSV. Leave empty to use the bundled CSV. A relative path (e.g. 'mappings/name_conversion.csv') is resolved from the workspace root. An absolute path is used as-is."
+        },
+        "sqlrename.dbDialect": {
+          "type": "string",
+          "default": "oracle",
+          "description": "SQL dialect used by the source database (e.g. 'oracle', 'mysql', 'postgres'). Used when parsing SQL with sqlglot."
         }
       }
     }
