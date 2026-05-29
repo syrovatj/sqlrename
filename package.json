@@ -14,7 +14,7 @@
   "contributes": {
     "commands": [{
       "command": "sqlrename.helloWorld",
-      "title": "Hello World"
+      "title": "sqlrename: Hello World"
     }]
   },
   "scripts": {
