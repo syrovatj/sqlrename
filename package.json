@@ -12,10 +12,39 @@
   "activationEvents": [],
   "main": "./extension.js",
   "contributes": {
-    "commands": [{
-      "command": "sqlrename.helloWorld",
-      "title": "sqlrename: Hello World"
-    }]
+    "commands": [
+      {
+        "command": "sqlrename.helloWorld",
+        "title": "sqlrename: Hello World"
+      },
+      {
+        "command": "sqlrename.renameSelection",
+        "title": "SQL Rename: Rewrite Selection"
+      }
+    ],
+    "keybindings": [
+      {
+        "command": "sqlrename.renameSelection",
+        "key": "ctrl+r",
+        "mac": "cmd+r",
+        "when": "editorTextFocus"
+      }
+    ],
+    "configuration": {
+      "title": "SQL Rename",
+      "properties": {
+        "sqlrename.pythonPath": {
+          "type": "string",
+          "default": "python3",
+          "description": "Python 3 executable. Use 'python3' (macOS/Linux), 'python' (Windows), or an absolute path."
+        },
+        "sqlrename.mappingCsvPath": {
+          "type": "string",
+          "default": "name_conversion.csv",
+          "description": "Mapping CSV filename (resolved relative to rename_engine/) or absolute path to a custom CSV."
+        }
+      }
+    }
   },
   "scripts": {
     "lint": "eslint .",

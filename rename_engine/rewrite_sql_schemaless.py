@@ -128,42 +128,70 @@ def rewrite_sql(sql_text, table_map, column_map, dialect="oracle"):
 # Main
 # -----------------------------
 def main():
-    if len(sys.argv) != 4:
-        print("Usage: python rewrite_sql.py <mapping.csv> <input.sql> <output.sql>")
-        sys.exit(1)
+    import io
 
     script_dir = Path(__file__).resolve().parent
-    
-    mapping_csv_name = Path(sys.argv[1])
-    input_sql_name = Path(sys.argv[2])
-    output_sql_name = Path(sys.argv[3])
 
-    mapping_csv = script_dir / mapping_csv_name
-    input_sql = script_dir / input_sql_name
-    output_sql = script_dir / output_sql_name
-    
+    if len(sys.argv) == 2:
+        # stdin/stdout mode — called by the VS Code extension
+        mapping_csv = script_dir / Path(sys.argv[1])
+        table_map, column_map = load_mappings(mapping_csv)
 
-    table_map, column_map = load_mappings(mapping_csv)
+        # Force UTF-8 on stdin (important on Windows where the default may be cp1250)
+        sql_text = io.TextIOWrapper(sys.stdin.buffer, encoding="utf-8").read()
 
-    sql_text = input_sql.read_text(encoding="utf-8")
+        rewritten_sql, missing_tables, missing_columns = rewrite_sql(
+            sql_text, table_map, column_map
+        )
 
-    rewritten_sql, missing_tables, missing_columns = rewrite_sql(
-        sql_text, table_map, column_map
-    )
+        # Pure SQL to stdout — no trailing newline so the caller captures it cleanly
+        sys.stdout.write(rewritten_sql)
+        sys.stdout.flush()
 
-    output_sql.write_text(rewritten_sql, encoding="utf-8")
+        if missing_tables:
+            print("\n⚠ Missing table mappings:", file=sys.stderr)
+            for table in sorted(missing_tables):
+                print(f"  - {table}", file=sys.stderr)
 
-    print("✔ SQL rewritten successfully")
+        if missing_columns:
+            print("\n⚠ Missing column mappings:", file=sys.stderr)
+            for table, column in sorted(missing_columns):
+                print(f"  - {table.upper()}.{column.upper()}", file=sys.stderr)
 
-    if missing_tables:
-        print("\n⚠ Missing table mappings:")
-        for table in sorted(missing_tables):
-            print(f"  - {table}")
+    elif len(sys.argv) == 4:
+        # File mode — original behaviour kept for backwards compatibility
+        mapping_csv = script_dir / Path(sys.argv[1])
+        input_sql   = script_dir / Path(sys.argv[2])
+        output_sql  = script_dir / Path(sys.argv[3])
 
-    if missing_columns:
-        print("\n⚠ Missing column mappings:")
-        for table, column in sorted(missing_columns):
-            print(f"  - {table.upper()}.{column.upper()}")
+        table_map, column_map = load_mappings(mapping_csv)
+        sql_text = input_sql.read_text(encoding="utf-8")
+
+        rewritten_sql, missing_tables, missing_columns = rewrite_sql(
+            sql_text, table_map, column_map
+        )
+
+        output_sql.write_text(rewritten_sql, encoding="utf-8")
+        print("✔ SQL rewritten successfully")
+
+        if missing_tables:
+            print("\n⚠ Missing table mappings:")
+            for table in sorted(missing_tables):
+                print(f"  - {table}")
+
+        if missing_columns:
+            print("\n⚠ Missing column mappings:")
+            for table, column in sorted(missing_columns):
+                print(f"  - {table.upper()}.{column.upper()}")
+
+    else:
+        print(
+            "Usage:\n"
+            "  stdin/stdout mode : python rewrite_sql_schemaless.py <mapping.csv>\n"
+            "  file mode         : python rewrite_sql_schemaless.py <mapping.csv> <input.sql> <output.sql>",
+            file=sys.stderr,
+        )
+        sys.exit(1)
 
 
 if __name__ == "__main__":
