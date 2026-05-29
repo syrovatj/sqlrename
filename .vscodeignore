@@ -1,10 +1,10 @@
-.vscode/**
-.vscode-test/**
-test/**
+# Development & project docs
+AGENTS.md
+CLAUDE.md
+.vscode/
 .gitignore
-.yarnrc
-vsc-extension-quickstart.md
-**/jsconfig.json
-**/*.map
-**/eslint.config.mjs
-**/.vscode-test.*
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db

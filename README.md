@@ -1,65 +1,52 @@
-# sqlrename README
+# sqlrename — VS Code Extension
 
-This is the README for your extension "sqlrename". After writing up a brief description, we recommend including the following sections.
+## What this extension does
 
-## Features
+On a data platform, source databases have Polish/abbreviated table and column names (e.g. `SAMOCHODY`, `NUMER_VIN`). Target databases have English, descriptive names (e.g. `CAR`, `VIN`). Both databases share the same structure, but differ in naming.
 
-Describe specific features of your extension including screenshots of your extension in action. Image paths are relative to this README file.
+**User workflow:**
+1. Open a `.sql` file in VS Code.
+2. Select the SQL code (or use entire file if nothing selected).
+3. Press `Cmd+R` (macOS) / `Ctrl+R` (Windows/Linux).
+4. The extension rewrites table and column names using a CSV mapping and displays the result.
 
-For example if there is an image subfolder under your extension project workspace:
+## Architecture
 
-\!\[feature X\]\(images/feature-x.png\)
+- [extension.js](extension.js) — VS Code extension entry point (currently a scaffold with `helloWorld` command). Needs to be wired to the rename command and keybinding.
+- [rename_engine/rewrite_sql_schemaless.py](rename_engine/rewrite_sql_schemaless.py) — Python rename engine using `sqlglot` to parse and rewrite SQL ASTs. Handles multi-statement SQL, table aliases, missing mappings.
+- [rename_engine/name_conversion.csv](rename_engine/name_conversion.csv) — Semicolon-delimited CSV mapping source→target schema/table/column names. Columns: `source_schema;source_table;source_column;target_schema;target_table;target_column`.
 
-> Tip: Many popular extensions utilize animations. This is an excellent way to show off your extension! We recommend short, focused animations that are easy to follow.
+## CSV mapping format
 
-## Requirements
+```
+source_schema;source_table;source_column;target_schema;target_table;target_column
+NCARS_UCARS;SAMOCHODY;NUMER_VIN;INT_TCE_SALES;NCARS_UCARS_CAR;VIN
+```
 
-If you have any requirements or dependencies, add a section describing those and how to install and configure them.
+- Delimiter: semicolon (`;`)
+- Empty `target_column` means the column is unmapped (logged as warning)
+- `TARGET_SCHEMA` in the Python script is currently hardcoded to `INT_TCE_SALES`
 
-## Extension Settings
+## What still needs to be implemented
 
-Include if your extension adds any VS Code settings through the `contributes.configuration` extension point.
+The extension is a scaffold. The main work is wiring up the VS Code command to the rename engine:
 
-For example:
+1. Register a command `sqlrename.renameSelection` in [extension.js](extension.js) and [package.json](package.json).
+2. Add a keybinding `Cmd+R` / `Ctrl+R` in `package.json` (contributes → keybindings).
+3. Get selected text (or full document) from the active editor.
+4. Call the Python rename engine — either by spawning `rewrite_sql_schemaless.py` as a subprocess, or by reimplementing the logic in JS/Node.js.
+5. Display the rewritten SQL — options include: replacing the selection in-place, opening a new editor tab with the result, or showing a diff view.
+6. Report any missing table/column mappings to the user (e.g. via VS Code output channel or information message).
 
-This extension contributes the following settings:
+The CSV mapping path should be configurable (VS Code setting), defaulting to the bundled [rename_engine/name_conversion.csv](rename_engine/name_conversion.csv).
 
-* `myExtension.enable`: Enable/disable this extension.
-* `myExtension.thing`: Set to `blah` to do something.
+## Key decisions to make
 
-## Known Issues
+- **Python subprocess vs. JS reimplementation**: The Python engine uses `sqlglot` for proper SQL AST parsing. The JS path would need a JS SQL parser (e.g. `node-sql-parser`) or a simpler regex/token approach. Subprocess is more robust but requires Python + sqlglot to be installed on the user's machine.
+- **Output style**: Replace selection in-place, open a side-by-side diff, or open a new untitled document.
 
-Calling out known issues can help limit users opening duplicate issues against your extension.
+## Tech stack
 
-## Release Notes
-
-Users appreciate release notes as you update your extension.
-
-### 1.0.0
-
-Initial release of ...
-
-### 1.0.1
-
-Fixed issue #.
-
-### 1.1.0
-
-Added features X, Y, and Z.
-
----
-
-## Working with Markdown
-
-You can author your README using Visual Studio Code.  Here are some useful editor keyboard shortcuts:
-
-* Split the editor (`Cmd+\` on macOS or `Ctrl+\` on Windows and Linux)
-* Toggle preview (`Shift+Cmd+V` on macOS or `Shift+Ctrl+V` on Windows and Linux)
-* Press `Ctrl+Space` (Windows, Linux, macOS) to see a list of Markdown snippets
-
-## For more information
-
-* [Visual Studio Code's Markdown Support](http://code.visualstudio.com/docs/languages/markdown)
-* [Markdown Syntax Reference](https://help.github.com/articles/markdown-basics/)
-
-**Enjoy!**
+- Node.js / VS Code Extension API (`vscode` module)
+- Python 3 + `sqlglot` (rename engine)
+- SQL dialect: Oracle (configurable in the Python script)
