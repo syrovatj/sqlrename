@@ -132,7 +132,7 @@ def main():
 
     script_dir = Path(__file__).resolve().parent
 
-    if len(sys.argv) == 2:
+    if len(sys.argv) >= 3:
         # stdin/stdout mode — called by the VS Code extension
         mapping_csv = script_dir / Path(sys.argv[1])
         table_map, column_map = load_mappings(mapping_csv)
@@ -140,8 +140,9 @@ def main():
         # Force UTF-8 on stdin (important on Windows where the default may be cp1250)
         sql_text = io.TextIOWrapper(sys.stdin.buffer, encoding="utf-8").read()
 
+        dialect = sys.argv[3] if len(sys.argv) > 3 else "oracle"
         rewritten_sql, missing_tables, missing_columns = rewrite_sql(
-            sql_text, table_map, column_map
+            sql_text, table_map, column_map, dialect=dialect
         )
 
         # Pure SQL to stdout — no trailing newline so the caller captures it cleanly
@@ -167,8 +168,9 @@ def main():
         table_map, column_map = load_mappings(mapping_csv)
         sql_text = input_sql.read_text(encoding="utf-8")
 
+        dialect = sys.argv[4] if len(sys.argv) > 4 else "oracle"
         rewritten_sql, missing_tables, missing_columns = rewrite_sql(
-            sql_text, table_map, column_map
+            sql_text, table_map, column_map, dialect=dialect
         )
 
         output_sql.write_text(rewritten_sql, encoding="utf-8")

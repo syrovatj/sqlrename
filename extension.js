@@ -12,9 +12,9 @@ const path = require('path');
  * @param {string} sqlText
  * @returns {Promise<{stdout: string, stderr: string}>}
  */
-function runPythonEngine(pythonPath, scriptPath, csvArg, sqlText) {
+function runPythonEngine(pythonPath, scriptPath, csvArg, sqlText, dialect) {
     return new Promise((resolve, reject) => {
-        const proc = spawn(pythonPath, [scriptPath, csvArg], { env: process.env });
+        const proc = spawn(pythonPath, [scriptPath, csvArg, dialect], { env: process.env });
 
         /** @type {Buffer[]} */
         const stdoutChunks = [];
@@ -115,6 +115,7 @@ function activate(context) {
             const config = vscode.workspace.getConfiguration('sqlrename');
             const pythonPath = config.get('pythonPath') || 'python3';
             const csvArg = resolveCsvPath(config.get('mappingCsvPath'), context.extensionPath);
+            const dbDialect = config.get('dbDialect') || 'oracle';
             const scriptPath = path.join(
                 context.extensionPath,
                 'rename_engine',
@@ -133,7 +134,8 @@ function activate(context) {
                         /** @type {string} */ (pythonPath),
                         scriptPath,
                         csvArg,
-                        sqlText
+                        sqlText,
+                        dbDialect
                     )
                 );
             } catch (err) {
