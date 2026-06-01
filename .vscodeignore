@@ -1,9 +1,13 @@
 # Development & project docs
 AGENTS.md
 CLAUDE.md
+CHANGELOG.md
 .vscode/
 .gitignore
 .idea/
+test/
+vsc-extension-quickstart.md
+rename_engine/name_conversion.csv
 
 # OS files
 .DS_Store
