@@ -8,6 +8,7 @@ CHANGELOG.md
 test/
 vsc-extension-quickstart.md
 rename_engine/name_conversion.csv
+sqlrename.code-workspace
 
 # OS files
 .DS_Store
