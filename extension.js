@@ -9,12 +9,21 @@ const path = require('path');
  * @param {string} pythonPath
  * @param {string} scriptPath
  * @param {string} csvArg
+ * @param {string | null} targetSchema
+ * @param {string} dbDialect
  * @param {string} sqlText
  * @returns {Promise<{stdout: string, stderr: string}>}
  */
-function runPythonEngine(pythonPath, scriptPath, csvArg, sqlText, dialect) {
+function runPythonEngine(pythonPath, scriptPath, csvArg, targetSchema, dbDialect, sqlText) {
+    // Always pass both targetSchema and dialect in fixed positions;
+    // empty string tells Python to fall back to its own defaults.
+    const args = [scriptPath, csvArg];
+    if (targetSchema) args.push(targetSchema);
+    else                args.push('');
+    args.push(dbDialect !== 'oracle' ? dbDialect : '');
+
     return new Promise((resolve, reject) => {
-        const proc = spawn(pythonPath, [scriptPath, csvArg, dialect], { env: process.env });
+        const proc = spawn(pythonPath, args, { env: process.env });
 
         /** @type {Buffer[]} */
         const stdoutChunks = [];
@@ -115,6 +124,7 @@ function activate(context) {
             const config = vscode.workspace.getConfiguration('sqlrename');
             const pythonPath = config.get('pythonPath') || 'python3';
             const csvArg = resolveCsvPath(config.get('mappingCsvPath'), context.extensionPath);
+            const targetSchema = config.get('targetSchema') || null;
             const dbDialect = config.get('dbDialect') || 'oracle';
             const scriptPath = path.join(
                 context.extensionPath,
@@ -134,8 +144,9 @@ function activate(context) {
                         /** @type {string} */ (pythonPath),
                         scriptPath,
                         csvArg,
-                        sqlText,
-                        dbDialect
+                        targetSchema,
+                        dbDialect,
+                        sqlText
                     )
                 );
             } catch (err) {

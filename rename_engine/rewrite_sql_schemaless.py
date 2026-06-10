@@ -1,13 +1,14 @@
 import csv
 import sys
 from pathlib import Path
+import os
 from collections import defaultdict
 
 import sqlglot
 from sqlglot import exp
 
 
-TARGET_SCHEMA = "INT_TCE_SALES"   # change if needed
+DEFAULT_TARGET_SCHEMA = "INT_TCE_SALES"
 
 
 # -----------------------------
@@ -56,7 +57,9 @@ def load_mappings(csv_path):
 # Rewrite SQL
 # -----------------------------
 
-def rewrite_sql(sql_text, table_map, column_map, dialect="oracle"):
+def rewrite_sql(sql_text, table_map, column_map, dialect="oracle", target_schema=None):
+    if target_schema is None:
+        target_schema = DEFAULT_TARGET_SCHEMA
 
     missing_tables = set()
     missing_columns = set()
@@ -111,7 +114,7 @@ def rewrite_sql(sql_text, table_map, column_map, dialect="oracle"):
             name = table.name.lower()
 
             if name in table_map:
-                table.set("db", TARGET_SCHEMA)
+                table.set("db", target_schema)
                 table.set("this", exp.Identifier(this=table_map[name]))
             else:
                 missing_tables.add(name)
@@ -131,60 +134,68 @@ def main():
     import io
 
     script_dir = Path(__file__).resolve().parent
+    if len(sys.argv) >= 4:
+        # Distinguish stdin vs file mode: absolute .sql path in argv[2] = file mode
+        arg2 = sys.argv[2]
+        is_file_mode = arg2.lower().endswith('.sql') and os.path.isabs(arg2)
 
-    if len(sys.argv) >= 3:
-        # stdin/stdout mode — called by the VS Code extension
-        mapping_csv = script_dir / Path(sys.argv[1])
-        table_map, column_map = load_mappings(mapping_csv)
+        if is_file_mode:
+            mapping_csv  = script_dir / Path(sys.argv[1])
+            input_sql    = Path(arg2)
+            output_sql   = Path(sys.argv[3])
+            table_map, column_map = load_mappings(mapping_csv)
+            sql_text     = input_sql.read_text(encoding='utf-8')
+        else:
+            # stdin mode — called by the VS Code extension
+            mapping_csv  = script_dir / Path(sys.argv[1])
+            table_map, column_map = load_mappings(mapping_csv)
+            sql_text     = io.TextIOWrapper(
+                sys.stdin.buffer, encoding='utf-8'
+            ).read()
 
-        # Force UTF-8 on stdin (important on Windows where the default may be cp1250)
-        sql_text = io.TextIOWrapper(sys.stdin.buffer, encoding="utf-8").read()
-
-        dialect = sys.argv[3] if len(sys.argv) > 3 else "oracle"
+        # In both branches above, read schema and dialect from argv
+        if is_file_mode:
+            target_schema = DEFAULT_TARGET_SCHEMA
+            dialect       = 'oracle'
+        else:
+            target_schema   = (sys.argv[2]
+                               if len(sys.argv) > 2 and sys.argv[2]
+                               else DEFAULT_TARGET_SCHEMA)
+            dialect         = (sys.argv[3]
+                               if len(sys.argv) > 3 and sys.argv[3]
+                               else 'oracle')
         rewritten_sql, missing_tables, missing_columns = rewrite_sql(
-            sql_text, table_map, column_map, dialect=dialect
+            sql_text, table_map, column_map, dialect=dialect,
+            target_schema=target_schema
         )
 
-        # Pure SQL to stdout — no trailing newline so the caller captures it cleanly
         sys.stdout.write(rewritten_sql)
         sys.stdout.flush()
 
         if missing_tables:
-            print("\n⚠ Missing table mappings:", file=sys.stderr)
+            print("\n\u26a0 Missing table mappings:", file=sys.stderr)
             for table in sorted(missing_tables):
                 print(f"  - {table}", file=sys.stderr)
 
         if missing_columns:
-            print("\n⚠ Missing column mappings:", file=sys.stderr)
+            print("\u26a0 Missing column mappings:", file=sys.stderr)
             for table, column in sorted(missing_columns):
                 print(f"  - {table.upper()}.{column.upper()}", file=sys.stderr)
 
-    elif len(sys.argv) == 4:
-        # File mode — original behaviour kept for backwards compatibility
-        mapping_csv = script_dir / Path(sys.argv[1])
-        input_sql   = script_dir / Path(sys.argv[2])
-        output_sql  = script_dir / Path(sys.argv[3])
+        # File mode writes to output file instead of stdout
+        if is_file_mode:
+            output_sql.write_text(rewritten_sql, encoding='utf-8')
+            sys.stdout.write("\u2714 SQL rewritten successfully")
 
-        table_map, column_map = load_mappings(mapping_csv)
-        sql_text = input_sql.read_text(encoding="utf-8")
+            if missing_tables:
+                print("\n\u26a0 Missing table mappings:")
+                for table in sorted(missing_tables):
+                    print(f"  - {table}")
 
-        dialect = sys.argv[4] if len(sys.argv) > 4 else "oracle"
-        rewritten_sql, missing_tables, missing_columns = rewrite_sql(
-            sql_text, table_map, column_map, dialect=dialect
-        )
-
-        output_sql.write_text(rewritten_sql, encoding="utf-8")
-        print("✔ SQL rewritten successfully")
-
-        if missing_tables:
-            print("\n⚠ Missing table mappings:")
-            for table in sorted(missing_tables):
-                print(f"  - {table}")
-
-        if missing_columns:
-            print("\n⚠ Missing column mappings:")
-            for table, column in sorted(missing_columns):
-                print(f"  - {table.upper()}.{column.upper()}")
+            if missing_columns:
+                print("\n\u26a0 Missing column mappings:")
+                for table, column in sorted(missing_columns):
+                    print(f"  - {table.upper()}.{column.upper()}")
 
     else:
         print(

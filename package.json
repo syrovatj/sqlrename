@@ -51,6 +51,11 @@
           "type": "string",
           "default": "oracle",
           "description": "SQL dialect used by the source database (e.g. 'oracle', 'mysql', 'postgres'). Used when parsing SQL with sqlglot."
+        },
+        "sqlrename.targetSchema": {
+          "type": "string",
+          "default": "",
+          "description": "Target schema name for rewritten table names. Leave empty to use the default schema (INT_TCE_SALES)."
         }
       }
     }
