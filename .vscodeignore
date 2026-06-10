@@ -9,6 +9,9 @@ test/
 vsc-extension-quickstart.md
 rename_engine/name_conversion.csv
 sqlrename.code-workspace
+.vscode-test.mjs                                                                                                                                                                                                                                                   
+eslint.config.mjs                                                                                                                                                                                                                                                  
+jsconfig.json 
 
 # OS files
 .DS_Store
