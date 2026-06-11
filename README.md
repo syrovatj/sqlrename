@@ -1,52 +1,43 @@
-# sqlrename — VS Code Extension
+# SQL Rename
 
-## What this extension does
+Rename table and column names in your SQL queries based on a CSV mapping file. Useful when working across databases with different naming conventions (e.g. Bronze/Silver tables in a lakehouse architecture).
 
-On a data platform, source databases have Polish/abbreviated table and column names (e.g. `SAMOCHODY`, `NUMER_VIN`). Target databases have English, descriptive names (e.g. `CAR`, `VIN`). Both databases share the same structure, but differ in naming.
+## Usage
 
-**User workflow:**
-1. Open a `.sql` file in VS Code.
-2. Select the SQL code (or use entire file if nothing selected).
-3. Press `Cmd+R` (macOS) / `Ctrl+R` (Windows/Linux).
-4. The extension rewrites table and column names using a CSV mapping and displays the result.
+1. Open a file with the sql code in VS Code.
+2. Select the SQL code to rename (or leave empty to rename the entire file).
+3. Press **`Cmd+R`** (macOS) / **`Ctrl+R`** (Windows/Linux).
+4. The extension replaces names inline and logs any unmapped tables/columns as warnings in the Output.
 
-## Architecture
+## Installation
 
-- [extension.js](extension.js) — VS Code extension entry point (currently a scaffold with `helloWorld` command). Needs to be wired to the rename command and keybinding.
-- [rename_engine/rewrite_sql_schemaless.py](rename_engine/rewrite_sql_schemaless.py) — Python rename engine using `sqlglot` to parse and rewrite SQL ASTs. Handles multi-statement SQL, table aliases, missing mappings.
-- [rename_engine/name_conversion.csv](rename_engine/name_conversion.csv) — Semicolon-delimited CSV mapping source→target schema/table/column names. Columns: `source_schema;source_table;source_column;target_schema;target_table;target_column`.
+1. Install Python 3 on your machine.
+2. Install the `sqlglot` library:
+   ```bash
+   pip install sqlglot
+   ```
+3. Open VS Code Settings (extension icon → ⚙️ Settings) and configure:
+   - **SQL Rename: DB Dialect** — SQL dialect of your database (e.g. `oracle`, `postgres`)
+   - **SQL Rename: Mapping CSV Path** — path to your mapping file (leave empty for bundled)
+   - **SQL Rename: Target Schema** — target schema name (leave empty for default)
 
-## CSV mapping format
+## CSV Mapping Format
 
+Semicolon-delimited:
+
+```csv
+source_table;source_column;target_table;target_column
+SAMOCHODY;NUMER_VIN;NCARS_UCARS_CAR;VIN
 ```
-source_schema;source_table;source_column;target_schema;target_table;target_column
-NCARS_UCARS;SAMOCHODY;NUMER_VIN;INT_TCE_SALES;NCARS_UCARS_CAR;VIN
-```
 
-- Delimiter: semicolon (`;`)
-- Empty `target_column` means the column is unmapped (logged as warning)
-- `TARGET_SCHEMA` in the Python script is currently hardcoded to `INT_TCE_SALES`
+- Empty `target_table` or `target_column` means that field is unmapped (logged as a warning).
+- Source schema is not required — set the target schema in extension settings.
 
-## What still needs to be implemented
+## Extension Settings
 
-The extension is a scaffold. The main work is wiring up the VS Code command to the rename engine:
-
-1. Register a command `sqlrename.renameSelection` in [extension.js](extension.js) and [package.json](package.json).
-2. Add a keybinding `Cmd+R` / `Ctrl+R` in `package.json` (contributes → keybindings).
-3. Get selected text (or full document) from the active editor.
-4. Call the Python rename engine — either by spawning `rewrite_sql_schemaless.py` as a subprocess, or by reimplementing the logic in JS/Node.js.
-5. Display the rewritten SQL — options include: replacing the selection in-place, opening a new editor tab with the result, or showing a diff view.
-6. Report any missing table/column mappings to the user (e.g. via VS Code output channel or information message).
-
-The CSV mapping path should be configurable (VS Code setting), defaulting to the bundled [rename_engine/name_conversion.csv](rename_engine/name_conversion.csv).
-
-## Key decisions to make
-
-- **Python subprocess vs. JS reimplementation**: The Python engine uses `sqlglot` for proper SQL AST parsing. The JS path would need a JS SQL parser (e.g. `node-sql-parser`) or a simpler regex/token approach. Subprocess is more robust but requires Python + sqlglot to be installed on the user's machine.
-- **Output style**: Replace selection in-place, open a side-by-side diff, or open a new untitled document.
-
-## Tech stack
-
-- Node.js / VS Code Extension API (`vscode` module)
-- Python 3 + `sqlglot` (rename engine)
-- SQL dialect: Oracle (configurable in the Python script)
+| Setting | Default | Description |
+|---|---|---|
+| `sqlrename.pythonPath` | `python3` | Path to your Python executable |
+| `sqlrename.mappingCsvPath` | _(empty)_ | Absolute or workspace-relative path to the CSV mapping file |
+| `sqlrename.dbDialect` | `oracle` | SQL dialect for parsing (e.g. `oracle`, `mysql`, `postgres`) |
+| `sqlrename.targetSchema` | _(empty)_ | Target schema name; defaults to `dbo` when empty |

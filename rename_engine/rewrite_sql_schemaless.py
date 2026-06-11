@@ -8,7 +8,7 @@ import sqlglot
 from sqlglot import exp
 
 
-DEFAULT_TARGET_SCHEMA = "INT_TCE_SALES"
+DEFAULT_TARGET_SCHEMA = "dbo"
 
 
 # -----------------------------

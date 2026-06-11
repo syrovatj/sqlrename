@@ -1,8 +1,9 @@
 {
   "name": "sqlrename",
-  "displayName": "sqlrename",
+  "publisher": "JanSyrovatka", 
+  "displayName": "SQL Rename",
   "description": "Rename sql objects based on csv mapping",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "engines": {
     "vscode": "^1.120.0"
   },
@@ -17,10 +18,6 @@
   "main": "./extension.js",
   "contributes": {
     "commands": [
-      {
-        "command": "sqlrename.helloWorld",
-        "title": "sqlrename: Hello World"
-      },
       {
         "command": "sqlrename.renameSelection",
         "title": "SQL Rename: Rewrite Selection"
@@ -50,12 +47,12 @@
         "sqlrename.dbDialect": {
           "type": "string",
           "default": "oracle",
-          "description": "SQL dialect used by the source database (e.g. 'oracle', 'mysql', 'postgres'). Used when parsing SQL with sqlglot."
+          "description": "SQL dialect used by the source database (e.g. 'oracle', 'mysql', 'postgres', 'databricks'). Used when parsing SQL with sqlglot. Full set of options is here: https://sqlglot.com/sqlglot/dialects.html"
         },
         "sqlrename.targetSchema": {
           "type": "string",
-          "default": "",
-          "description": "Target schema name for rewritten table names. Leave empty to use the default schema (INT_TCE_SALES)."
+          "default": "dbo",
+          "description": "Target schema name for rewritten table names. Leave empty to use the default schema."
         }
       }
     }
