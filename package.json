@@ -3,13 +3,13 @@
   "publisher": "JanSyrovatka", 
   "displayName": "SQL Rename",
   "description": "Rename sql objects based on csv mapping",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "engines": {
     "vscode": "^1.120.0"
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/<you>/<repo-name>"
+    "url": "https://github.com/syrovatj/sqlrename"
   },
   "categories": [
     "Other"
